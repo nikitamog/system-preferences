@@ -1,12 +1,28 @@
 
 
-;; put customize data here
-;;(setq custom-file (concat user-emacs-directory "custom.el"))
-;;(when (file-exists-p custom-file)
-;;  (load custom-file))
-
 ;; personal preferences here
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(setq user-full-name "Nikita Mogilevsky"
+      user-email-address "nikitamog@gmail.com")
+
+;; show this file first.
+(setq initial-buffer-choice
+      "~/.emacs")
+
+;; show a wider breadth of characters.
+(set-language-environment "UTF-8")
+(set-default-coding-systems 'utf-8)
+
+;; consider auto-fill-mode (inserts characters)
+;; or Visual-line-mode (for simple display effects)
+;; https://www.emacswiki.org/emacs/LineWrap
+
+;; Pair parentheses and other things
+(electric-pair-mode 1)
+
+;; show column numbers
+(setq column-number-mode 1)
 
 ;; use visual cues instead of system sounds.
 (setq visible-bell t)
@@ -14,15 +30,39 @@
 ;; show the time
 (display-time-mode 1)
 
+;; show battery life
+(display-battery-mode 1)
+
 ;; change tabs to spaces by default
 (setq-default indent-tabs-mode nil)
 (setq-default tab-width 4)
+
+;; case-insensitive minibuffer completion
+;; (setq completion-ignore-case  t)
+
+;; mode-hooks
+(add-hook 'c++-mode
+          (lambda ()
+            (setq-local left-margin 4)
+            (set-fill-column 80)))
+
+(add-hook 'org-mode
+          (lambda ()
+            (set-fill-column 60)))
+
+
+;; paragraph wrapping.
+(add-hook 'org-mode-hook 'auto-fill-mode)
+
 
 ;; go fullscreen
 ;;(toggle-frame-fullscreen)
 
 ;; set font
-(add-to-list 'default-frame-alist '(font . "Latin Modern Mono 10 Regular"))
+;; https://input.fontbureau.com/
+;; saved in ~/.local/share/fonts
+(add-to-list 'default-frame-alist '(font . "Input Mono Light"))
+;;(add-to-list 'default-frame-alist '(font . "Input Serif Light"))
 
 ;;bypass using the meta key
 (global-set-key "\C-x\C-m" 'execute-extended-command)
@@ -44,25 +84,91 @@
 ;;             '("irc.freenode.net"
 ;;               :channels ("#emacs")))
 
-
 ;; backup files
 (setq backup-directory-alist `(("." . "~/.saves")))
 
-
 ;; org-mode
+;; some helpful stuff from
+;; https://rodogi.github.io/emacs-config-file/
 (setq org-clock-persist 'history)
 (org-clock-persistence-insinuate)
 
-;; margins
-(setq left-margin-width 3)
+;; The following is to fix a bug to be able to expand
+;; '<s' to code block.
+(when (version<= "9.2" (org-version))
+		(require 'org-tempo))
 
-;; Cedet setup
-(load-file (concat user-emacs-directory "/cedet/cedet-devel-load.el"))
-(load-file (concat user-emacs-directory "cedet/contrib/cedet-contrib-load.el"))
+(setq org-directory "~/Documents/notes")
+(setq org-agenda-files (list "~/Documents/notes/task_reserve.org"
+                             "~/Documents/notes/in_progress.org"))
+(setq org-default-notes-file (concat org-directory "/reference.org"))
+
+(add-to-list 'load-path (concat user-emacs-directory "org-bullets"))
+
+(require 'org-bullets)
+(add-hook 'org-mode-hook 'org-bullets-mode)
+
+(setq org-ellipsis "⤵")
+(setq org-src-tab-acts-natively t)
+
+;; Close TODOs with a timestamp
+(setq org-log-done 'time)
+
+;; global defaults for org
+(global-set-key (kbd "C-c l") 'org-store-link)
+(global-set-key (kbd "C-c a") 'org-agenda)
+(global-set-key (kbd "C-c c") 'org-capture)
+(global-set-key (kbd "C-c C-o") 'org-open-at-point-global)
+(global-set-key (kbd "C-c C-l") 'org-insert-link-global)
+(global-set-key (kbd "C-c o") 'org-info)
+
+(setq org-todo-keywords
+      '((sequence "TODO" "IN PROGRESS" "DONE")))
+(setq org-enforce-todo-dependencies t)
+
+(setq org-tag-alist '(("@work" . ?w) ("@home" . ?h) ("laptop" . ?l)))
+
+;; resolve idle time when away from the computer.
+(setq org-clock-idle-time 15)
+
+;; org-agenda stuff
+(setq org-agenda-include-diary t)
+
+;; margins
+;;(setq left-margin-width 3)
+
+;; margins alternate
+(fringe-mode '(16 . 16))
 
 ;; cc modes and the like.
 (setq-default c-default-style "linux"
               c-basic-offset 4)
+
+;; Source: http://www.emacswiki.org/emacs-en/download/misc-cmds.el
+(defun revert-buffer-no-confirm ()
+    "Revert buffer without confirmation."
+    (interactive)
+    (revert-buffer :ignore-auto :noconfirm))
+
+;; hotkey for compilation
+(global-set-key (kbd "<f5>") (lambda ()
+                               (interactive)
+                               (setq-local compilation-read-command nil)
+                               (call-interactively 'compile)))
+
+(setq
+ ;; use gdb-many-windows by default
+ gdb-many-windows t
+
+ ;; Non-nil means display source file containing the main routine at startup
+ gdb-show-main t
+ )
+
+(setq dired-listing-switches "-AlShr")
+
+;; line breaks
+;; (dolist (hook '(python-mode-hook prog-mode-hook list-mode-hook))
+;;   (add-hook hook (lambda () (set-fill-column 80))))
 
 ;; END PERSONAL
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -79,16 +185,83 @@
 ;; modern list library
 (add-to-list 'load-path (concat user-emacs-directory "dash.el"))
 
-(add-to-list 'load-path (concat user-emacs-directory "xterm-color"))
-(add-to-list 'load-path (concat user-emacs-directory "eterm-256color"))
+;; (add-to-list 'load-path (concat user-emacs-directory "xterm-color"))
+;; (add-to-list 'load-path (concat user-emacs-directory "eterm-256color"))
 
-(require 'eterm-256color)
+;; (require 'eterm-256color)
 
-;; (eval-after-load 'company
-;;      '(add-to-list 'company-backends 'company-irony)
+;; company (complete any) front-end completion framework
+;; https://github.com/company-mode/company-mode
+(add-to-list 'load-path (concat user-emacs-directory "company-mode"))
 
-;;irony
-;;company
+;; irony back-end completion framework
+;; https://github.com/Sarcasm/irony-mode
+(add-to-list 'load-path (concat user-emacs-directory "irony-mode"))
+
+;; the package to bridge the two
+;; https://github.com/Sarcasm/irony-mode
+(add-to-list 'load-path (concat user-emacs-directory "company-irony"))
+
+;; an outline mode for file navigation
+;; https://github.com/Alexander-Miller/treemacs
+(add-to-list 'load-path (concat user-emacs-directory "treemacs"))
+
+;; ggtags for code navigation
+;; https://github.com/leoliu/ggtags
+
+;; flycheck for linting
+;; https://github.com/flycheck/flycheck
+(add-to-list 'load-path (concat user-emacs-directory "flycheck"))
+
+;; flycheck-irony to integrate the backend
+;; https://github.com/Sarcasm/flycheck-irony
+(add-to-list 'load-path (concat user-emacs-directory "flycheck-irony"))
+
+;; conveniences for matching symbols.
+;; https://github.com/Fuco1/smartparens
+
+;; highlights changes that have not been commited.
+;; https://github.com/dgutov/diff-hl
+
+;; solarized theme for easy eyes.
+;; https://github.com/bbatsov/solarized-emacs
+(add-to-list 'load-path (concat user-emacs-directory "solarized-emacs"))
+
+;; popwin to deal with those pesky window popups
+;; https://github.com/m2ym/popwin-el
+(add-to-list 'load-path (concat user-emacs-directory "popwin-el"))
+(require 'popwin)
+(popwin-mode 1)
+
+;; load them in!
+(require 'company)
+(require 'irony)
+(require 'company-irony)
+(require 'solarized)
+(load-theme 'solarized-dark t)
+(require 'flycheck)
+(require 'flycheck-irony)
+;; company mode in all buffers
+(add-hook 'after-init-hook 'global-company-mode)
+
+(eval-after-load 'company
+  '(add-to-list 'company-backends 'company-irony))
+  
+;; lean-mode
+;;(add-to-list 'load-path (concat user-emacs-directory "lean-mode"))
+;;(require 'lean-mode)
+
+;; CODE FOLDING
+;;    (defun sg-toggle-fold ()
+;;    "Toggle code folding according to indentation of current line."
+;;    (interactive)
+;;    (set-selective-display
+;;    (if selective-display
+;;    nil
+;;    (save-excursion
+;;    (back-to-indentation)
+;;    (1+ (current-column))))))
+
 
 ;; END PACKAGE REQUIRES
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -113,24 +286,14 @@
     ;; For important compatibility libraries like cl-lib
     (add-to-list 'package-archives '("gnu" . (concat proto "://elpa.gnu.org/packages/")))))
 (package-initialize)
-
-
-
-
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(custom-enabled-themes (quote (solarized-light)))
- '(custom-safe-themes
+ '(org-agenda-files
    (quote
-    ("d91ef4e714f05fff2070da7ca452980999f5361209e679ee988e3c432df24347" "d677ef584c6dfc0697901a44b885cc18e206f05114c8a3b7fde674fce6180879" default)))
- '(inhibit-startup-screen nil)
- '(initial-buffer-choice "~/.emacs")
- '(package-selected-packages
-   (quote
-    (company-irony-c-headers company-irony company-c-headers company solarized-theme))))
+    ("~/Documents/notes/journal.org" "~/Documents/notes/task_reserve.org" "~/Documents/notes/in_progress.org"))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
