@@ -1,0 +1,546 @@
+
+
+#+title: Emacs Startup Initialization
+
+#+name: lexical-binding
+#+begin_src emacs-lisp :comments no :tangle yes
+  ;; -*- lexical-binding: t -*-
+#+end_src
+
+#+RESULTS: lexical-binding
+
+* startup behavior
+#+begin_src emacs-lisp
+  (desktop-save-mode 1)
+#+end_src
+
+#+RESULTS:
+: t
+
+#+begin_src emacs-lisp
+  ;; show this file first.
+(setq initial-buffer-choice
+      "~/notes/journal.org")
+#+end_src
+
+#+RESULTS:
+: ~/notes/journal.org
+
+* persistence
+#+begin_src emacs-lisp
+(savehist-mode)
+#+end_src
+
+#+RESULTS:
+: t
+
+* unsorted
+#+begin_src emacs-lisp
+;;bypass using the meta key
+(global-set-key "\C-x\C-m" 'execute-extended-command)
+(global-set-key "\C-c\C-m" 'execute-extended-command)
+
+;;mistake convenience
+(global-set-key "\C-w" 'backward-kill-word)
+(global-set-key "\C-x\C-k" 'kill-region)
+(global-set-key "\C-c\C-k" 'kill-region)
+
+;; backup files
+(setq backup-directory-alist `(("." . "~/.saves")))
+
+;; margins alternate
+(fringe-mode '(16 . 16))
+
+;; cc modes and the like.
+(setq-default c-default-style "linux"
+              c-basic-offset 4)
+#+end_src
+
+#+RESULTS:
+: 4
+
+* user info
+#+begin_src emacs-lisp
+  (setq user-full-name "Nikita Mogilevsky"
+        user-email-address "nikitamog@gmail.com")
+#+end_src
+
+#+RESULTS:
+: nikitamog@gmail.com
+
+* straight
+#+name: bootstrap
+#+begin_src emacs-lisp
+  (straight-use-package
+   '(terraform-mode
+     :type git
+     :host github
+     :repo "emacsorphanage/terraform-mode"))
+#+end_src
+
+#+RESULTS: bootstrap
+: t
+
+* general display
+#+begin_src emacs-lisp
+
+  ;;remove buttons and menus
+  (if (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
+  (if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
+  (if (fboundp 'menu-bar-mode) (menu-bar-mode -1))
+
+  ;; show column numbers
+  (setq column-number-mode 1)
+
+  ;; use visual cues instead of system sounds.
+  (setq visible-bell t)
+
+#+end_src
+
+#+RESULTS:
+: t
+
+primary faces
+#+begin_src emacs-lisp
+  (straight-use-package
+   '(solarized-dark :type git
+                    :host github
+                    :repo "bbatsov/solarized-emacs"))
+
+  (require 'solarized)
+  (load-theme 'solarized-dark t)
+    
+  ;;(set-frame-font "Hack 18" nil t)
+  (set-frame-font "Input Sans" 19 nil t)
+#+end_src
+
+#+RESULTS:
+
+* reading documents
+#+begin_src emacs-lisp
+  (straight-use-package
+   '(pdf-tools :type git
+               :host github
+               :repo "vedang/pdf-tools"))
+  (pdf-loader-install) ; On demand loading, leads to faster startup time
+#+end_src
+
+#+RESULTS:
+: ((%PDF . #[0 \301\302\300"\207 [(nil nil nil nil) apply pdf-loader--load] 3]))
+
+* org-mode extensions
+
+org-mode is preloaded before this file.
+
+#+name org-mode hooks
+#+begin_src emacs-lisp
+  ;; paragraph wrapping.
+  (add-hook 'org-mode-hook 'auto-fill-mode)
+#+end_src
+
+#+begin_src emacs-lisp
+  (setq org-agenda-files '("~/notes"))
+#+end_src
+
+#+RESULTS:
+| ~/notes |
+
+#+begin_src emacs-lisp
+(setq org-ellipsis "⤵")
+(setq org-src-tab-acts-natively t)
+(setq org-startup-with-inline-images t)
+
+;; Close TODOs with a timestamp
+(setq org-log-done 'time)
+
+;; global defaults for org
+(global-set-key (kbd "C-c l") 'org-store-link)
+(global-set-key (kbd "C-c a") 'org-agenda)
+(global-set-key (kbd "C-c c") 'org-capture)
+(global-set-key (kbd "C-c C-o") 'org-open-at-point-global)
+(global-set-key (kbd "C-c C-l") 'org-insert-link-global)
+(global-set-key (kbd "C-c o") 'org-info)
+(global-set-key (kbd "C-; C-f") 'toggle-frame-fullscreen)
+#+end_src
+
+#+RESULTS:
+: toggle-frame-fullscreen
+
+** org-roam
+
+package
+#+begin_src emacs-lisp
+  (setq-default emacsql-sqlite-executable "/usr/bin/sqlite3")
+  (straight-use-package
+   '(emacsql :type git
+                    :host github
+                    :repo "magit/emacsql"))
+  (straight-use-package
+   '(emacsql-sqlite :type git
+                    :host github
+                    :repo "magit/emacsql"))
+  (require 'emacsql)
+  ;; (straight-use-package
+  ;;  '(emacsql-sqlite-common :type git
+  ;;                   :host github
+  ;;                   :repo "magit/emacsql"))
+  (require 'emacsql-sqlite)
+  (straight-use-package
+   '(magit-section :type git
+                    :host github
+                    :repo "magit/magit"))
+  (require 'magit-section)
+  (straight-use-package
+   '(org-roam :type git
+              :host github
+              :repo "org-roam/org-roam"))
+#+end_src
+
+#+RESULTS:
+: t
+
+#+begin_src emacs-lisp
+  (require 'org-roam)
+  (setq-default org-roam-directory (file-truename "~/notes/org-roam"))
+  (setq org--inhibit-version-check t) 
+  (org-roam-db-autosync-mode)
+#+end_src
+
+#+RESULTS:
+: t
+
+#+name org-roam user keybindings
+#+begin_src emacs-lisp
+  (global-set-key (kbd "C-; C-r C-i") 'org-roam-node-insert)
+  (global-set-key (kbd "C-; C-r C-f") 'org-roam-node-find)
+  (global-set-key (kbd "C-; C-r C-r C-i") 'org-roam-ref-add)
+  (global-set-key (kbd "C-; C-r C-r C-a") 'org-roam-ref-add)  
+  (global-set-key (kbd "C-; C-r C-r C-k") 'org-roam-ref-remove)
+  (global-set-key (kbd "C-; C-r C-r C-f") 'org-roam-ref-find)
+  (global-set-key (kbd "C-; C-r C-=") 'org-id-get-create)
+  (global-set-key (kbd "C-; C-r C-+") 'org-id-get-create)  
+#+end_src
+
+#+RESULTS:
+: org-id-get-create
+
+* search
+#+begin_src emacs-lisp
+  (setq-default case-fold-search t)   ; make searches case insensitive
+  (setq-default completion-ignore-case t)
+#+end_src
+
+#+RESULTS:
+: t
+
+* mode-line
+#+begin_src emacs-lisp
+  ;; show the time
+  (display-time-mode 1)
+
+  ;; show battery life
+  (display-battery-mode 1)
+
+#+end_src
+
+#+RESULTS:
+: t
+
+* terminal virtualization
+#+begin_src emacs-lisp
+(straight-use-package
+ '(vterm :type git
+                  :host github
+                  :repo "akermu/emacs-libvterm"))
+#+end_src
+
+#+RESULTS:
+: t
+
+* completion
+
+** COMMENT orderless
+#+name: special search
+#+begin_src emacs-lisp
+  ;; there's a bug here. Not sure what it is.
+  ;; (straight-use-package
+  ;;  '(orderless :type git
+  ;; 	     :host github
+  ;; 	     :repo "oantolin/orderless"))
+  ;; (setq completion-styles '(orderless basic)
+  ;;       completion-category-defaults nil
+  ;;       completion-category-overrides '((file (styles partial-completion)))
+
+#+end_src
+
+#+RESULTS: special search
+
+** minibuffer
+
+#+begin_src emacs-lisp
+  (straight-use-package
+   '(vertico :type git
+             :host github
+             :repo "minad/vertico"))
+  (vertico-mode)
+
+  ;; (straight-use-package
+  ;;  '(posframe :type git
+  ;;            :host github
+  ;;            :repo "tumashu/posframe"))
+  (straight-use-package
+   '(vertico-posframe :type git
+             :host github
+             :repo "tumashu/vertico-posframe"))
+  (setq vertico-multiform-commands
+        '((consult-line
+           posframe
+           (vertico-posframe-poshandler . posframe-poshandler-frame-top-center)
+           (vertico-posframe-border-width . 10)
+           ;; NOTE: This is useful when emacs is used in both in X and
+           ;; terminal, for posframe do not work well in terminal, so
+           ;; vertico-buffer-mode will be used as fallback at the
+           ;; moment.
+           (vertico-posframe-fallback-mode . vertico-buffer-mode))
+          (t posframe)))
+  (vertico-posframe-mode 1)
+
+
+#+end_src
+
+#+RESULTS:
+: t
+
+#+begin_src emacs-lisp
+  (defun crm-indicator (args)
+    (cons (format "[CRM%s] %s"
+                  (replace-regexp-in-string
+                   "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" ""
+                   crm-separator)
+                  (car args))
+          (cdr args)))
+  (advice-add #'completing-read-multiple :filter-args #'crm-indicator)
+
+  ;; Do not allow the cursor in the minibuffer prompt
+  (setq minibuffer-prompt-properties
+        '(read-only t cursor-intangible t face minibuffer-prompt))
+  (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
+
+  ;; Emacs 28: Hide commands in M-x which do not work in the current mode.
+  ;; Vertico commands are hidden in normal buffers.
+  ;; (setq read-extended-command-predicate
+  ;;       #'command-completion-default-include-p)
+
+  ;; Enable recursive minibuffers
+  (setq enable-recursive-minibuffers t)
+#+end_src
+
+#+RESULTS:
+: t
+
+** at-point
+#+begin_src emacs-lisp
+  (straight-use-package
+   '(consult :type git
+             :host github
+             :repo "minad/consult"
+             )
+   )
+
+  (global-set-key (kbd "C-; C-s") 'consult-grep)
+
+  ;; corfu :: at-point completion
+  (straight-use-package
+     '(corfu :type git
+               :host github
+               :repo "minad/corfu"
+               )
+     )
+
+  (global-corfu-mode)
+  ;; Enable auto completion and configure quitting
+  (setq corfu-auto t
+        corfu-quit-no-match 'separator) ;; or t
+
+  (straight-use-package
+   '(cape :type git
+                :host github
+                :repo "minad/cape"))
+
+  (straight-use-package
+   '(marginalia :type git
+                :host github
+                :repo "minad/marginalia"))
+  (marginalia-mode)
+
+  (straight-use-package
+   '(fussy      :type git
+                :host github
+                :repo "jojojames/fussy"))
+#+end_src
+
+#+RESULTS:
+: t
+
+* general purpose development
+
+** sane defaults
+#+begin_src emacs-lisp
+  (setq-default indent-tabs-mode nil)
+  (setq indent-tabs-mode nil)
+  (global-set-key (kbd "C-x m") nil)
+#+end_src
+
+** magit
+#+begin_src emacs-lisp
+  (straight-use-package
+   '(magit :type git
+           :host github
+           :repo "magit/magit"))
+#+end_src
+
+** dart
+#+begin_src emacs-lisp
+  (straight-use-package
+   '(dart-mode :type git
+           :host github
+           :repo "emacsorphanage/dart-mode"))
+  (straight-use-package
+   '(flutter-mode :type git
+           :host github
+           :repo "amake/flutter.el"))
+#+end_src
+
+** rust
+#+begin_src emacs-lisp
+  (straight-use-package
+   '(rust-mode :type git
+          :host github
+          :repo "rust-lang/rust-mode"))
+#+end_src
+
+#+name: rist-mode-hooks
+#+begin_src elisp
+  (add-hook 'rust-mode-hook #'lsp-deferred)
+#+end_src
+** yaml
+#+begin_src elisp
+  (straight-use-package
+     '(yaml-mode :type git
+            :host github
+            :repo "yoshiki/yaml-mode"))
+#+end_src
+** docker
+#+begin_src elisp
+  (straight-use-package
+   '(docker-file
+     :type git
+     :host github
+     :repo "emacsorphanage/terraform-mode"))
+#+end_src
+** typescript
+https://github.com/emacs-typescript/typescript.el
+#+begin_src elisp
+  (straight-use-package
+   '(typescript
+     :type git
+     :host github
+     :repo "emacs-typescript/typescript.el"))
+#+end_src
+* embedded development
+#+begin_src
+  (straight-use-package
+   '(platformio-mode :type git
+             :host github
+             :repo "platformio/PlatformIO-Mode"))
+#+end_src
+* elisp development
+#+begin_src emacs-lisp
+  (straight-use-package
+   '(s :type git :flavor melpa :host github :repo "magnars/s.el"))
+#+end_src
+* streaming
+#+begin_src emacs-lisp
+  (straight-use-package
+     '(emms :type git
+               :host github
+               :repo "emacs-straight/emms"
+               )
+     )
+#+end_src
+
+#+begin_src emacs-lisp
+  (require 'emms-setup)
+  (emms-all)
+  (setq emms-player-list '(emms-player-vlc)
+        emms-info-functions '(emms-info-native))
+
+#+end_src
+
+#+begin_src emacs-lisp
+  (global-set-key (kbd "C-; C-m") nil)
+  (global-set-key (kbd "C-; C-m C-p") 'emms-pause)
+  (global-set-key (kbd "C-; C-m p") 'emms-pause)
+  (global-set-key (kbd "C-; C-m C-n") 'emms-next-noerror)
+  (global-set-key (kbd "C-; C-m n") 'emms-next-noerror)  
+#+end_src
+* communication
+#+begin_src emacs-lisp
+  (straight-use-package
+   '(ement :type git
+             :host github
+             :repo "alphapapa/ement.el"
+             )
+   )
+#+end_src
+* conveniences
+#+begin_src emacs-lisp
+  (straight-use-package
+    '(google-this-mode
+      :type git
+      :host github
+      :repo "Malabarba/emacs-google-this"))
+  (google-this-mode 1)
+  #+end_src
+* LSP
+#+begin_src emacs-lisp
+  (straight-use-package
+   '(lsp-mode :type git
+              :host github
+              :repo "emacs-lsp/lsp-mode"))
+  ;; (straight-use-package
+  ;;  '(eglot :type git
+  ;;             :host github
+  ;;             :repo "joaotavora/eglot"))
+
+#+end_src
+
+#+RESULTS:
+: t
+
+#+name: lsp setup
+#+begin_src elisp
+  (require 'lsp-mode)
+#+end_src
+
+#+name: lsp shortcuts
+#+begin_src emacs-lisp
+  (global-set-key (kbd "C-; C-j") nil)
+  (global-set-key (kbd "C-; C-j C-i") 'lsp-find-definition)
+#+end_src
+* misc
+wlemuel/alarm-clock
+#+begin_src elisp
+  (straight-use-package
+   '(alarm-clock :type git
+             :host github
+             :repo "wlemuel/alarm-clock"
+             )
+   )
+  (straight-use-package
+   '(all-the-icons :type git
+             :host github
+             :repo "domtronn/all-the-icons.el"
+             )
+   )
+#+end_src
