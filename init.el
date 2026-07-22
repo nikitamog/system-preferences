@@ -23,7 +23,7 @@
 ;; ==================================================
 ;; user init
 
-(let* ((user-elisp-dir (expand-file-name "~/code/elisp")))
+(let* ((user-elisp-dir (expand-file-name "~/code/system-preferences/user-elisp")))
   (unless (and (file-exists-p user-elisp-dir)
 	       (file-directory-p user-elisp-dir))
     (error
