@@ -3,4 +3,6 @@
 !.emacs
 !init.el
 !user-config.org
+!bootstrap.sh
+
 !README.md
