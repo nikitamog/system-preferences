@@ -1,89 +1,93 @@
-
+#+property: header-args:emacs-lisp :lexical t :comments link 
+#+header: :prologue ";;; -*- lexical-binding: t -*-"
 
 #+title: Emacs Startup Initialization
 
-#+name: lexical-binding
-#+begin_src emacs-lisp :comments no :tangle yes
-  ;; -*- lexical-binding: t -*-
+* =nm-init= startup behavior
+
+#+begin_src emacs-lisp :comments no :tangle "nm-init.el"
+;;; -*- lexical-binding: t -*-
+#+end_src
+trying out prot style:
+1. split org documents into chunks of .el files for execution purposes
+2. track only `this-user-config-file` and `init.el` for version control purposes
+3. Generate files listed in literate config document.
+4. Generate file, listing the build sequence as listed in document (since order matters.)
+5. Now that config is prepped, load emacs init.
+6. load build sequence file into a list
+7. load files in the build sequence; continue on failure.
+
+Dump build sequence to file.
+#+begin_src emacs-lisp :tangle no :results none
+  (defun nm/get-delimited-prefix (raw-string delimiter)
+    (let ((regex (format "%s\\(.*?\\)%s" delimiter delimiter)))
+      (if (string-match regex raw-string)
+          (match-string 1 raw-string)
+        nil)))
+
+  (defun nm/build-order (buffer)
+    (with-current-buffer buffer
+      (unless (derived-mode-p 'org-mode)
+        (user-error "Not in an org-mode buffer"))
+      (let (ordered-list)
+        (org-element-map (org-element-parse-buffer) 'headline
+          (lambda (hl)
+            (let ((header-title
+                   (string-trim
+                    (org-element-interpret-data (org-element-property :title hl)))))
+              (push (format "%s.el" (nm/get-delimited-prefix header-title "=")) ordered-list))))
+        (seq-uniq (nreverse ordered-list)))))
+
+  (defun nm/dump-emacs-build-sequence ()
+    (interactive)
+    (let* ((target              "nm-emacs-build-sequence.txt")
+           (buffer              (get-buffer-create target))
+           (emacs-config-file "user-config.org"))
+      (with-current-buffer buffer
+        (erase-buffer)
+        
+        (insert (string-join (nm/build-order emacs-config-file) "\n"))
+        (write-region (point-min) (point-max) target)
+        (message "Done!"))))
+
+  (defun nm/reload-emacs-config ()
+    (interactive)
+    (nm/dump-emacs-build-sequence)
+    (with-current-buffer (find-file-noselect (locate-user-emacs-file "user-config.org"))
+      (org-babel-tangle))
+    (nm/load-nm-files "~/.emacs.d"))
 #+end_src
 
-#+RESULTS: lexical-binding
-
-* startup behavior
-#+begin_src emacs-lisp
-  (desktop-save-mode 1)
+#+begin_src emacs-lisp :tangle no :results none
+(nm/dump-emacs-build-sequence)
+(org-babel-tangle)
 #+end_src
 
-#+RESULTS:
-: t
+#+begin_src emacs-lisp :tangle "nm-init.el"
+    ;; show this file first.
+  (setq user-full-name      "Nikita Mogilevsky"
+         user-email-address "nikitamog@gmail.com")
 
-#+begin_src emacs-lisp
-  ;; show this file first.
-(setq initial-buffer-choice
-      "~/notes/journal.org")
+  ;; (setq initial-buffer-choice
+  ;;        "~/notes/journal.org")
+  ;; (setq initial-buffer-choice (lambda () (switch-to-buffer "*Messages*")))
+
+  ;; backup files
+  (setq backup-directory-alist `(("." . "~/.saves")))
 #+end_src
 
-#+RESULTS:
-: ~/notes/journal.org
-
-* persistence
-#+begin_src emacs-lisp
+* =nm-init= persistence
+#+begin_src emacs-lisp :tangle "nm-init.el"
 (savehist-mode)
+(desktop-save-mode 1)
 #+end_src
 
-#+RESULTS:
-: t
-
-* unsorted
-#+begin_src emacs-lisp
-;;bypass using the meta key
-(global-set-key "\C-x\C-m" 'execute-extended-command)
-(global-set-key "\C-c\C-m" 'execute-extended-command)
-
-;;mistake convenience
-(global-set-key "\C-w" 'backward-kill-word)
-(global-set-key "\C-x\C-k" 'kill-region)
-(global-set-key "\C-c\C-k" 'kill-region)
-
-;; backup files
-(setq backup-directory-alist `(("." . "~/.saves")))
-
-;; margins alternate
-(fringe-mode '(16 . 16))
-
-;; cc modes and the like.
-(setq-default c-default-style "linux"
-              c-basic-offset 4)
+* =nm-display= general display
+#+begin_src emacs-lisp :comments no :tangle "nm-display.el"
+;;; -*- lexical-binding: t -*-
 #+end_src
 
-#+RESULTS:
-: 4
-
-* user info
-#+begin_src emacs-lisp
-  (setq user-full-name "Nikita Mogilevsky"
-        user-email-address "nikitamog@gmail.com")
-#+end_src
-
-#+RESULTS:
-: nikitamog@gmail.com
-
-* straight
-#+name: bootstrap
-#+begin_src emacs-lisp
-  (straight-use-package
-   '(terraform-mode
-     :type git
-     :host github
-     :repo "emacsorphanage/terraform-mode"))
-#+end_src
-
-#+RESULTS: bootstrap
-: t
-
-* general display
-#+begin_src emacs-lisp
-
+#+begin_src emacs-lisp :tangle "nm-display.el"
   ;;remove buttons and menus
   (if (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
   (if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
@@ -95,13 +99,18 @@
   ;; use visual cues instead of system sounds.
   (setq visible-bell t)
 
+  ;; margins alternate
+  (fringe-mode '(16 . 16))
 #+end_src
 
-#+RESULTS:
-: t
-
 primary faces
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle "nm-display.el"
+  (straight-use-package
+   '(all-the-icons :type git
+             :host github
+             :repo "domtronn/all-the-icons.el"
+             )
+   )
   (straight-use-package
    '(solarized-dark :type git
                     :host github
@@ -116,36 +125,82 @@ primary faces
 
 #+RESULTS:
 
-* reading documents
-#+begin_src emacs-lisp
-  (straight-use-package
-   '(pdf-tools :type git
-               :host github
-               :repo "vedang/pdf-tools"))
-  (pdf-loader-install) ; On demand loading, leads to faster startup time
+* =nm-display= mode-line
+#+begin_src emacs-lisp :tangle "nm-display.el"
+  ;; show the time
+  (display-time-mode 1)
+
+  ;; show battery life
+  (display-battery-mode 1)
+
 #+end_src
 
-#+RESULTS:
-: ((%PDF . #[0 \301\302\300"\207 [(nil nil nil nil) apply pdf-loader--load] 3]))
+* =nm-global= vanilla global macros
+#+begin_src emacs-lisp :comments no :tangle "nm-global.el"
+;;; -*- lexical-binding: t -*-
+#+end_src
 
-* org-mode extensions
+#+begin_src emacs-lisp :tangle "nm-global.el"
+;;bypass using the meta key
+(global-set-key "\C-x\C-m" 'execute-extended-command)
+(global-set-key "\C-c\C-m" 'execute-extended-command)
+(global-set-key (kbd "C-x m") nil) ;; I pull up mail sometimes.
 
-org-mode is preloaded before this file.
+;;mistake convenience
+(global-set-key "\C-w" 'backward-kill-word)
+(global-set-key "\C-x\C-k" 'kill-region)
+(global-set-key "\C-c\C-k" 'kill-region)
+#+end_src
+
+* =nm-global= vanilla global defaults
+#+begin_src emacs-lisp :tangle "nm-global.el"
+;; cc modes and the like.
+(setq-default c-default-style "linux"
+              c-basic-offset 4)
+#+end_src
+
+** =nm-global= search
+#+begin_src emacs-lisp :tangle "nm-global.el"
+  (setq-default case-fold-search t)   ; make searches case insensitive
+  (setq-default completion-ignore-case t
+                read-file-name-completion-ignore-case t
+                read-buffer-completion-ignore-case t)
+#+end_src
+
+* =nm-org= org-mode extensions
+#+begin_src emacs-lisp :comments no :tangle "nm-org.el"
+;;; -*- lexical-binding: t -*-
+#+end_src
+
+org-mode should be preloaded before this file.
 
 #+name org-mode hooks
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle "nm-org.el"
+  ;; (straight-use-package
+  ;;  '(org :type git
+  ;;        :host nil
+  ;;        :branch main
+  ;;        :repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
+  ;;        :local-repo "org"
+  ;;        :depth full))
+
   ;; paragraph wrapping.
-  (add-hook 'org-mode-hook 'auto-fill-mode)
+  (defun nm/before-org ()
+    "Evaluates below. Meant for `org-mode-hook`."
+    (visual-line-mode t)
+    ;;(auto-fill-mode t)
+    )
+  (add-hook 'org-mode-hook #'nm/before-org)
 #+end_src
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle "nm-org.el"
   (setq org-agenda-files '("~/notes"))
 #+end_src
 
 #+RESULTS:
 | ~/notes |
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle "nm-org.el"
 (setq org-ellipsis "⤵")
 (setq org-src-tab-acts-natively t)
 (setq org-startup-with-inline-images t)
@@ -166,10 +221,10 @@ org-mode is preloaded before this file.
 #+RESULTS:
 : toggle-frame-fullscreen
 
-** org-roam
+** =nm-org= org-roam
 
 package
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle "nm-org.el"
   (setq-default emacsql-sqlite-executable "/usr/bin/sqlite3")
   (straight-use-package
    '(emacsql :type git
@@ -179,17 +234,17 @@ package
    '(emacsql-sqlite :type git
                     :host github
                     :repo "magit/emacsql"))
-  (require 'emacsql)
+  ;;(require 'emacsql)
   ;; (straight-use-package
   ;;  '(emacsql-sqlite-common :type git
   ;;                   :host github
   ;;                   :repo "magit/emacsql"))
-  (require 'emacsql-sqlite)
+  ;;(require 'emacsql-sqlite)
   (straight-use-package
    '(magit-section :type git
                     :host github
                     :repo "magit/magit"))
-  (require 'magit-section)
+  ;;(require 'magit-section)
   (straight-use-package
    '(org-roam :type git
               :host github
@@ -199,8 +254,8 @@ package
 #+RESULTS:
 : t
 
-#+begin_src emacs-lisp
-  (require 'org-roam)
+#+begin_src emacs-lisp :tangle "nm-org.el"
+  ;;(require 'org-roam)
   (setq-default org-roam-directory (file-truename "~/notes/org-roam"))
   (setq org--inhibit-version-check t) 
   (org-roam-db-autosync-mode)
@@ -210,7 +265,7 @@ package
 : t
 
 #+name org-roam user keybindings
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle "nm-org.el"
   (global-set-key (kbd "C-; C-r C-i") 'org-roam-node-insert)
   (global-set-key (kbd "C-; C-r C-f") 'org-roam-node-find)
   (global-set-key (kbd "C-; C-r C-r C-i") 'org-roam-ref-add)
@@ -224,44 +279,23 @@ package
 #+RESULTS:
 : org-id-get-create
 
-* search
-#+begin_src emacs-lisp
-  (setq-default case-fold-search t)   ; make searches case insensitive
-  (setq-default completion-ignore-case t)
+* =nm-utils= terminal virtualization
+#+begin_src emacs-lisp :comments no :tangle "nm-utils.el"
+;;; -*- lexical-binding: t -*-
 #+end_src
 
-#+RESULTS:
-: t
-
-* mode-line
-#+begin_src emacs-lisp
-  ;; show the time
-  (display-time-mode 1)
-
-  ;; show battery life
-  (display-battery-mode 1)
-
-#+end_src
-
-#+RESULTS:
-: t
-
-* terminal virtualization
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle "nm-utils.el"
 (straight-use-package
  '(vterm :type git
                   :host github
                   :repo "akermu/emacs-libvterm"))
 #+end_src
 
-#+RESULTS:
-: t
+* =nm-utils= completion
 
-* completion
-
-** COMMENT orderless
+** =nm-utils= orderless
 #+name: special search
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle "nm-utils.el"
   ;; there's a bug here. Not sure what it is.
   ;; (straight-use-package
   ;;  '(orderless :type git
@@ -273,11 +307,9 @@ package
 
 #+end_src
 
-#+RESULTS: special search
+** =nm-utils= minibuffer
 
-** minibuffer
-
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle "nm-utils.el"
   (straight-use-package
    '(vertico :type git
              :host github
@@ -311,7 +343,7 @@ package
 #+RESULTS:
 : t
 
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle "nm-utils.el"
   (defun crm-indicator (args)
     (cons (format "[CRM%s] %s"
                   (replace-regexp-in-string
@@ -338,8 +370,9 @@ package
 #+RESULTS:
 : t
 
-** at-point
-#+begin_src emacs-lisp
+
+** =nm-utils= at-point
+#+begin_src emacs-lisp :tangle "nm-utils.el"
   (straight-use-package
    '(consult :type git
              :host github
@@ -348,6 +381,7 @@ package
    )
 
   (global-set-key (kbd "C-; C-s") 'consult-grep)
+  (global-set-key (kbd "C-; C-l") 'consult-line)
 
   ;; corfu :: at-point completion
   (straight-use-package
@@ -379,135 +413,34 @@ package
                 :repo "jojojames/fussy"))
 #+end_src
 
-#+RESULTS:
-: t
-
-* general purpose development
-
-** sane defaults
-#+begin_src emacs-lisp
-  (setq-default indent-tabs-mode nil)
-  (setq indent-tabs-mode nil)
-  (global-set-key (kbd "C-x m") nil)
+* =nm-devel= embedded development
+#+begin_src emacs-lisp :comments no :tangle "nm-devel.el"
+;;; -*- lexical-binding: t -*-
 #+end_src
 
-** magit
-#+begin_src emacs-lisp
-  (straight-use-package
-   '(magit :type git
-           :host github
-           :repo "magit/magit"))
-#+end_src
-
-** dart
-#+begin_src emacs-lisp
-  (straight-use-package
-   '(dart-mode :type git
-           :host github
-           :repo "emacsorphanage/dart-mode"))
-  (straight-use-package
-   '(flutter-mode :type git
-           :host github
-           :repo "amake/flutter.el"))
-#+end_src
-
-** rust
-#+begin_src emacs-lisp
-  (straight-use-package
-   '(rust-mode :type git
-          :host github
-          :repo "rust-lang/rust-mode"))
-#+end_src
-
-#+name: rist-mode-hooks
-#+begin_src elisp
-  (add-hook 'rust-mode-hook #'lsp-deferred)
-#+end_src
-** yaml
-#+begin_src elisp
-  (straight-use-package
-     '(yaml-mode :type git
-            :host github
-            :repo "yoshiki/yaml-mode"))
-#+end_src
-** docker
-#+begin_src elisp
-  (straight-use-package
-   '(docker-file
-     :type git
-     :host github
-     :repo "emacsorphanage/terraform-mode"))
-#+end_src
-** typescript
-https://github.com/emacs-typescript/typescript.el
-#+begin_src elisp
-  (straight-use-package
-   '(typescript
-     :type git
-     :host github
-     :repo "emacs-typescript/typescript.el"))
-#+end_src
-* embedded development
-#+begin_src
+#+begin_src emacs-lisp :tangle "nm-devel.el"
   (straight-use-package
    '(platformio-mode :type git
              :host github
              :repo "platformio/PlatformIO-Mode"))
 #+end_src
-* elisp development
-#+begin_src emacs-lisp
-  (straight-use-package
-   '(s :type git :flavor melpa :host github :repo "magnars/s.el"))
-#+end_src
-* streaming
-#+begin_src emacs-lisp
-  (straight-use-package
-     '(emms :type git
-               :host github
-               :repo "emacs-straight/emms"
-               )
-     )
-#+end_src
 
-#+begin_src emacs-lisp
-  (require 'emms-setup)
-  (emms-all)
-  (setq emms-player-list '(emms-player-vlc)
-        emms-info-functions '(emms-info-native))
-
+* =nm-devel= emacs development dependencies
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  ;; (straight-use-package
+  ;;  '(s :type git :flavor melpa :host github :repo "magnars/s.el"))
 #+end_src
-
-#+begin_src emacs-lisp
-  (global-set-key (kbd "C-; C-m") nil)
-  (global-set-key (kbd "C-; C-m C-p") 'emms-pause)
-  (global-set-key (kbd "C-; C-m p") 'emms-pause)
-  (global-set-key (kbd "C-; C-m C-n") 'emms-next-noerror)
-  (global-set-key (kbd "C-; C-m n") 'emms-next-noerror)  
-#+end_src
-* communication
-#+begin_src emacs-lisp
-  (straight-use-package
-   '(ement :type git
-             :host github
-             :repo "alphapapa/ement.el"
-             )
-   )
-#+end_src
-* conveniences
-#+begin_src emacs-lisp
-  (straight-use-package
-    '(google-this-mode
-      :type git
-      :host github
-      :repo "Malabarba/emacs-google-this"))
-  (google-this-mode 1)
-  #+end_src
-* LSP
-#+begin_src emacs-lisp
+* =nm-devel= LSP and DAP
+#+begin_src emacs-lisp :tangle "nm-devel.el"
   (straight-use-package
    '(lsp-mode :type git
               :host github
               :repo "emacs-lsp/lsp-mode"))
+  ;; (straight-use-package
+  ;;  '(dap-mode :type git
+  ;;             :host github
+  ;;             :repo "emacs-lsp/dap-mode"))
+
   ;; (straight-use-package
   ;;  '(eglot :type git
   ;;             :host github
@@ -519,28 +452,195 @@ https://github.com/emacs-typescript/typescript.el
 : t
 
 #+name: lsp setup
-#+begin_src elisp
+#+begin_src elisp :tangle "nm-devel.el"
   (require 'lsp-mode)
 #+end_src
 
 #+name: lsp shortcuts
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp "nm-devel.el"
   (global-set-key (kbd "C-; C-j") nil)
   (global-set-key (kbd "C-; C-j C-i") 'lsp-find-definition)
 #+end_src
-* misc
+
+* =nm-devel= general purpose development
+
+** =nm-devel= terraform
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  (straight-use-package
+   '(terraform-mode
+     :type git
+     :host github
+     :repo "emacsorphanage/terraform-mode"))
+#+end_src
+
+** =nm-devel= sane defaults
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  (setq-default indent-tabs-mode nil)
+  (setq indent-tabs-mode nil)
+#+end_src
+
+** =nm-devel= general-highlighting
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  (straight-use-package
+   '(hl-block-mode :type git
+           :host github
+           :repo "emacsmirror/hl-block-mode"))
+  (straight-use-package
+   '(hbdh-mode :type git
+           :host github
+           :repo "zzhjerry/hbdh-mode"))
+
+#+end_src
+
+** =nm-devel= file navigation
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+(straight-use-package
+   '(treemacs :type git
+           :host github
+           :repo "Alexander-Miller/treemacs"))  
+#+end_src
+
+** =nm-devel= magit
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  (straight-use-package
+   '(magit :type git
+           :host github
+           :repo "magit/magit"))
+#+end_src
+
+** =nm-devel= python
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  (defun nm/python-mode-init ()
+    (lsp-deferred)
+    (display-line-numbers-mode t))
+  (add-hook 'python-mode-hook #'nm/python-mode-init)
+#+end_src
+
+** =nm-devel= dart
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  (straight-use-package
+   '(dart-mode :type git
+           :host github
+           :repo "emacsorphanage/dart-mode"))
+  (straight-use-package
+   '(flutter-mode :type git
+           :host github
+           :repo "amake/flutter.el"))
+#+end_src
+
+** =nm-devel= rust
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  (straight-use-package
+   '(rust-mode :type git
+          :host github
+          :repo "rust-lang/rust-mode"))
+#+end_src
+
+#+name: rist-mode-hooks
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  (add-hook 'rust-mode-hook #'lsp-deferred)
+#+end_src
+
+** =nm-devel= racket
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+(straight-use-package
+   '(racket-mode :type git
+          :host github
+          :repo "greghendershott/racket-mode"))
+#+end_src
+
+** =nm-devel= yaml
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  (straight-use-package
+     '(yaml-mode :type git
+            :host github
+            :repo "yoshiki/yaml-mode"))
+#+end_src
+** =nm-devel= docker
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  (straight-use-package
+   '(docker-file
+     :type git
+     :host github
+     :repo "emacsorphanage/terraform-mode"))
+#+end_src
+** =nm-devel= typescript
+https://github.com/emacs-typescript/typescript.el
+#+begin_src emacs-lisp :tangle "nm-devel.el"
+  (straight-use-package
+   '(typescript
+     :type git
+     :host github
+     :repo "emacs-typescript/typescript.el"))
+#+end_src
+* =nm-browse= reading documents
+#+begin_src emacs-lisp :comments no :tangle "nm-browse.el"
+;;; -*- lexical-binding: t -*-
+#+end_src
+
+#+begin_src emacs-lisp :tangle "nm-browse.el"
+  (straight-use-package
+   '(pdf-tools :type git
+               :host github
+               :repo "vedang/pdf-tools"))
+  (pdf-loader-install) ; On demand loading, leads to faster startup time
+#+end_src
+
+* =nm-browse= streaming
+#+begin_src emacs-lisp :tangle "nm-browse.el"
+  (straight-use-package
+     '(emms :type git
+               :host github
+               :repo "emacs-straight/emms"
+               )
+     )
+#+end_src
+
+#+begin_src emacs-lisp :tangle "nm-browse.el"
+  (require 'emms-setup)
+  (emms-all)
+  (setq emms-player-list '(emms-player-vlc)
+        emms-info-functions '(emms-info-native))
+
+#+end_src
+
+#+begin_src emacs-lisp :tangle "nm-browse.el"
+  (global-set-key (kbd "C-; C-m") nil)
+  (global-set-key (kbd "C-; C-m C-p") 'emms-pause)
+  (global-set-key (kbd "C-; C-m p") 'emms-pause)
+  (global-set-key (kbd "C-; C-m C-n") 'emms-next-noerror)
+  (global-set-key (kbd "C-; C-m n") 'emms-next-noerror)  
+#+end_src
+* =nm-browse= communication
+emacs matrix client
+#+begin_src emacs-lisp :tangle "nm-browse.el"
+  (straight-use-package
+   '(ement :type git
+             :host github
+             :repo "alphapapa/ement.el"
+             )
+   )
+#+end_src
+* =nm-browse= browser
+
+#+begin_src emacs-lisp :tangle "nm-browse.el"
+  (straight-use-package
+   '(embr :type git
+          :host github
+          :repo "emacs-os/embr.el"))
+#+end_src
+
+* =nm-misc= straight packages
+#+begin_src emacs-lisp :comments no :tangle "nm-misc.el"
+;;; -*- lexical-binding: t -*-
+#+end_src
+
 wlemuel/alarm-clock
-#+begin_src elisp
+#+begin_src emacs-lisp :tangle "nm-misc.el"
   (straight-use-package
    '(alarm-clock :type git
              :host github
              :repo "wlemuel/alarm-clock"
-             )
-   )
-  (straight-use-package
-   '(all-the-icons :type git
-             :host github
-             :repo "domtronn/all-the-icons.el"
              )
    )
 #+end_src

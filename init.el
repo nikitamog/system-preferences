@@ -1,6 +1,10 @@
+;;; -*- lexical-binding: t -*-
 
+;; ==================================================
+;; straight init
 
 (defvar bootstrap-version)
+
 (let ((bootstrap-file
        (expand-file-name
         "straight/repos/straight.el/bootstrap.el"
@@ -15,19 +19,29 @@
       (goto-char (point-max))
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
-(straight-use-package
- '(org :type git
-       :repo "https://git.savannah.gnu.org/git/emacs/org-mode.git"
-       :local-repo "org"
-       :depth full
-       :pre-build (straight-recipes-org-elpa--build)
-       :build (:not autoloads)
-       :files (:defaults "lisp/*.el" ("etc/styles/" "etc/styles/*"))))
-(require 'org)
 
-(org-babel-load-file
- (expand-file-name "user-config.org"
-                   user-emacs-directory))
+;; ==================================================
+;; user init
+
+(let* ((user-elisp-dir (expand-file-name "~/code/elisp")))
+  (unless (and (file-exists-p user-elisp-dir)
+	       (file-directory-p user-elisp-dir))
+    (error
+     (message "Error in %s: %s" user-elisp-dir (error-message-string err))))
+  (add-to-list 'load-path user-elisp-dir))
+
+(require 'nm-sys-utils)
+
+(nm/load-nm-files "~/code/system-preferences")
+
+;;;; old literate config approach
+;; (org-babel-load-file
+;;  (expand-file-name "user-config.org"
+;;                    user-emacs-directory))
+
+;; ==================================================
+;; auto emacs
+
 (put 'narrow-to-region 'disabled nil)
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
@@ -43,3 +57,4 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+(put 'list-timers 'disabled nil)
