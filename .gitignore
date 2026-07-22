@@ -6,5 +6,6 @@
 !bootstrap.sh
 
 !/user-elisp/
+!/user-elisp/**
 
 !README.md
